@@ -1,17 +1,6 @@
-FROM eclipse-temurin:21-jdk AS build
-
-# Installer Maven
-RUN apt-get update && apt-get install -y maven
-
+# Build image docker for java 17
+FROM openjdk:17-jdk-slim
 WORKDIR /app
-COPY pom.xml .
-RUN mvn dependency:go-offline
-COPY src ./src
-RUN mvn clean package -DskipTests
-
-# Image finale plus légère
-FROM eclipse-temurin:21-jdk
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY target/demo-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java","-jar","app.jar"]

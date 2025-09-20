@@ -1,50 +1,62 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven-3.9.0'
+        jdk 'JDK-17'
+    }
+
     environment {
-        DOCKER_IMAGE = "awamousene/examen_devops"
-        DOCKER_TAG = "${env.BUILD_NUMBER}"
+        DOCKER_IMAGE = "demo-springboot"
+        DOCKERHUB_REPO = "awamousene/examen-devops" // ton repo DockerHub
+//         RENDER_DEPLOY_HOOK = "https://api.render.com/deploy/srv-d378rfmr433s73ehe220?key=aJVRFosBwPE" // ton deploy hook
     }
 
     stages {
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
-                git url: 'https://github.com/AwaMoussaSene/examen_devops.git', branch: 'main'
+                checkout scm
             }
         }
 
-        stage('Docker Build & Push') {
+        stage('Build') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'java-docker-hub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
-                    bat "docker build -t %DOCKER_IMAGE%:%DOCKER_TAG% ."
-                    bat "docker tag %DOCKER_IMAGE%:%DOCKER_TAG% %DOCKER_IMAGE%:latest"
-                    bat "docker push %DOCKER_IMAGE%:%DOCKER_TAG%"
-                    bat "docker push %DOCKER_IMAGE%:latest"
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t $DOCKER_IMAGE .'
+                sh 'docker tag $DOCKER_IMAGE $DOCKERHUB_REPO:latest'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    sh 'docker push $DOCKERHUB_REPO:latest'
+                    sh 'docker logout'
                 }
             }
         }
 
         stage('Deploy to Render') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'java-render-webhook', variable: 'RENDER_WEBHOOK'),
-                    string(credentialsId: 'java-render-app-url', variable: 'RENDER_APP_URL')
-                ]) {
-                    echo "Déploiement sur Render..."
-                    bat "curl -X POST \"%RENDER_WEBHOOK%\""
-                    echo "App URL: %RENDER_APP_URL%"
-                }
+                echo 'Déclenchement du déploiement Render...'
+                sh 'curl -X POST $RENDER_DEPLOY_HOOK'
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline terminé avec succès ✅"
+            echo 'Image poussée et déploiement Render déclenché 🎉'
         }
         failure {
-            echo "Le pipeline a échoué ❌"
+            echo 'Échec du pipeline ❌'
         }
     }
 }
