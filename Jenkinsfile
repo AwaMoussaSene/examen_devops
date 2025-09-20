@@ -9,7 +9,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "demo-springboot"
         DOCKERHUB_REPO = "awamousene/examen-devops"
-//         RENDER_DEPLOY_HOOK = "https://api.render.com/deploy/srv-d378rfmr433s73ehe220?key=aJVRFosBwPE"
+        RENDER_DEPLOY_HOOK = "https://api.render.com/deploy/srv-d379rvvfte5s73b38t8g?key=aIBRWrfqYb4"
     }
 
     stages {
